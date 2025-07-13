@@ -192,8 +192,6 @@ photomosaic-generator/
 - **ProgressManager**: Detailed progress tracking
 - **LanguageManager**: Complete i18n support
 
-## 🐛 Troubleshooting
-
 ### Common Issues
 1. **Memory errors**: Reduce grid size or use fewer tiles
 2. **Slow processing**: Enable parallel processing, reduce quality setting
@@ -221,12 +219,6 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
 4. Push to the branch: `git push origin feature/amazing-feature`
 5. Open a Pull Request
 
-## 🙏 Acknowledgments
-
-- Design philosophy inspired by John Carmack (performance optimization)
-- Algorithm beauty principles from Donald Knuth
-- Modern web standards and PWA best practices
-- Community feedback and testing
 
 ---
 
