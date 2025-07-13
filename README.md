@@ -67,7 +67,7 @@ Deploy to any static hosting service:
 - **AWS S3 + CloudFront**: Upload files to S3 bucket
 
 ### Demo
-https://photomozaic-5gx1y0oi2-kuwatchs-projects.vercel.app/
+https://photomozaic.vercel.app/
 
 ### Browser Support
 - **Chrome/Edge**: Version 80+ (recommended)
