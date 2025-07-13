@@ -38,7 +38,7 @@ A high-performance web application for creating stunning photo mosaics from your
 ### Option 1: Direct Download & Run
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/photomosaic-generator.git
+git clone https://github.com/devkuwatch/photomozaic.git
 cd photomosaic-generator
 
 # Open in browser
