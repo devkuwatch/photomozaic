@@ -66,7 +66,8 @@ Deploy to any static hosting service:
 - **Vercel**: Connect your repository
 - **AWS S3 + CloudFront**: Upload files to S3 bucket
 
-## 📋 Requirements
+### Demo
+https://photomozaic-5gx1y0oi2-kuwatchs-projects.vercel.app/
 
 ### Browser Support
 - **Chrome/Edge**: Version 80+ (recommended)
