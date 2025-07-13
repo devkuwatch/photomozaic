@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhotoMosaic Generator</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; worker-src 'self'; connect-src 'self';">
+    <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2196F3">
+    <meta name="description" content="High-performance photo mosaic generation application">
+</head>
+<body>
+    <div id="app">
+        <!-- Main header -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1 data-i18n="app-title">📸 PhotoMosaic Generator</h1>
+                <div class="header-controls">
+                    <button id="language-toggle" class="language-toggle" data-i18n="language-toggle" title="Switch language">🌐 English</button>
+                </div>
+                <div class="header-info">
+                    <div class="memory-indicator">
+                        <span class="memory-label" data-i18n="memory-label">メモリ:</span>
+                        <span id="memory-usage" class="memory-value">0MB</span>
+                    </div>
+                    <div class="tile-counter">
+                        <span class="tile-label" data-i18n="tile-count-label">タイル:</span>
+                        <span id="tile-count" class="tile-value">0<span data-i18n="tile-count-unit">枚</span></span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main class="app-main">
+            <!-- File selection section -->
+            <section class="file-section">
+                <div class="file-container">
+                    <!-- Source image selection -->
+                    <div class="source-section">
+                        <h2 data-i18n="source-image-title">🖼️ ソース画像</h2>
+                        <div class="file-input-container">
+                            <input type="file" id="source-file" accept="image/*" class="file-input">
+                            <label for="source-file" class="file-label">
+                                <span class="file-icon">📁</span>
+                                <span class="file-text" data-i18n="source-file-label">画像を選択してください</span>
+                            </label>
+                        </div>
+                        <div class="preview-container">
+                            <canvas id="source-preview" class="preview-canvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Tile image selection -->
+                    <div class="tiles-section">
+                        <h2 data-i18n="tile-images-title">🧩 タイル画像</h2>
+                        <div class="file-input-container">
+                            <input type="file" id="tile-files" accept="image/*" multiple class="file-input">
+                            <label for="tile-files" class="file-label">
+                                <span class="file-icon">📁</span>
+                                <span class="file-text" data-i18n="tile-files-label">複数の画像を選択してください</span>
+                            </label>
+                        </div>
+                        <div class="tile-info">
+                            <div class="tile-stats">
+                                <span><span data-i18n="tiles-selected">選択済み:</span> <span id="tile-selected-count">0</span><span data-i18n="tile-count-unit">枚</span></span>
+                                <span><span data-i18n="tiles-processed">処理済み:</span> <span id="tile-processed-count">0</span><span data-i18n="tile-count-unit">枚</span></span>
+                                <span><span data-i18n="parallel-processing">並列処理:</span> <span id="parallel-info" data-i18n="parallel-enabled">有効</span></span>
+                            </div>
+                            <div class="tile-preview-grid" id="tile-preview-grid"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings section -->
+            <section class="settings-section">
+                <h2 data-i18n="settings-title">⚙️ 設定</h2>
+                <div class="settings-grid">
+                    <div class="setting-group">
+                        <label for="grid-size" data-i18n="grid-size-label">グリッドサイズ:</label>
+                        <div class="range-input">
+                            <input type="range" id="grid-size" min="20" max="200" value="50" step="10">
+                            <span id="grid-size-value" class="range-value">50×50</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="tile-size" data-i18n="tile-size-label">タイルサイズ:</label>
+                        <div class="range-input">
+                            <input type="range" id="tile-size" min="8" max="64" value="32" step="8">
+                            <span id="tile-size-value" class="range-value">32px</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="quality-setting" data-i18n="quality-setting-label">品質設定:</label>
+                        <select id="quality-setting" class="quality-select">
+                            <option value="low" data-i18n="quality-low">低品質（高速）</option>
+                            <option value="medium" selected data-i18n="quality-medium">中品質（標準）</option>
+                            <option value="high" data-i18n="quality-high">高品質（高精度）</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="color-matching" data-i18n="color-matching-label">色マッチング:</label>
+                        <select id="color-matching" class="color-select">
+                            <option value="rgb" selected data-i18n="color-rgb">RGB</option>
+                            <option value="lab" data-i18n="color-lab">LAB（高精度）</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="neighbor-diversity" data-i18n="neighbor-diversity-label">隣接多様性:</label>
+                        <select id="neighbor-diversity" class="neighbor-select">
+                            <option value="enabled" selected data-i18n="neighbor-enabled">有効（隣接タイルは異なる画像）</option>
+                            <option value="disabled" data-i18n="neighbor-disabled">無効（従来の処理）</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="generate-section">
+                    <button id="generate-btn" class="generate-btn" disabled>
+                        <span class="btn-icon">🚀</span>
+                        <span class="btn-text" data-i18n="generate-btn">モザイク生成</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Result display section -->
+            <section class="result-section">
+                <h2 data-i18n="result-title">🎨 結果</h2>
+                <div class="viewer-container">
+                    <div class="viewer-toolbar">
+                        <div class="viewer-controls">
+                            <button id="zoom-in" class="control-btn" data-i18n="zoom-in" title="拡大">🔍+</button>
+                            <button id="zoom-out" class="control-btn" data-i18n="zoom-out" title="縮小">🔍-</button>
+                            <button id="fit-window" class="control-btn" data-i18n="fit-window" title="ウィンドウに合わせる">📐</button>
+                            <button id="actual-size" class="control-btn" data-i18n="actual-size" title="実際のサイズ">1:1</button>
+                        </div>
+                        <div class="viewer-info">
+                            <span id="zoom-level" class="zoom-info">100%</span>
+                        </div>
+                        <div class="viewer-actions">
+                            <button id="download-btn" class="action-btn" data-i18n="download-btn" title="完全なモザイク画像をダウンロード（拡大状態に関係なく全体画像を保存）">💾</button>
+                            <button id="share-btn" class="action-btn" data-i18n="share-btn" title="画像を共有">🔗</button>
+                        </div>
+                    </div>
+                    <div class="viewer-content">
+                        <canvas id="result-canvas" class="result-canvas"></canvas>
+                        <div class="viewer-overlay" id="viewer-overlay">
+                            <div class="placeholder">
+                                <span class="placeholder-icon">🖼️</span>
+                                <span class="placeholder-text" data-i18n="placeholder-text">モザイク画像がここに表示されます</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Progress display -->
+        <div class="progress-overlay" id="progress-overlay" style="display: none;">
+            <div class="progress-modal">
+                <div class="progress-header">
+                    <h3 data-i18n="progress-title">🔄 モザイク生成中</h3>
+                    <button id="minimize-progress" class="minimize-btn" data-i18n="progress-minimize" title="最小化">➖</button>
+                </div>
+                
+                <div class="progress-content">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                        <span class="progress-text" id="progress-text">0%</span>
+                    </div>
+
+                    <div class="progress-details" id="progress-details">
+                        <div class="detail-item">
+                            <span class="detail-label" data-i18n="current-stage-label">現在の処理:</span>
+                            <span class="detail-value" id="current-stage" data-i18n="initializing">初期化中...</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label" data-i18n="progress-info-label">進捗:</span>
+                            <span class="detail-value" id="progress-info">0/0</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label" data-i18n="elapsed-time-label">経過時間:</span>
+                            <span class="detail-value" id="elapsed-time">00:00</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label" data-i18n="remaining-time-label">残り時間:</span>
+                            <span class="detail-value" id="remaining-time">--:--</span>
+                        </div>
+                    </div>
+
+                    <div class="progress-preview" id="progress-preview">
+                        <h4 data-i18n="preview-title">リアルタイムプレビュー</h4>
+                        <canvas id="preview-canvas" class="preview-canvas"></canvas>
+                    </div>
+                </div>
+
+                <div class="progress-controls">
+                    <button id="pause-btn" class="control-btn" data-i18n="pause-btn">⏸️ 一時停止</button>
+                    <button id="cancel-btn" class="control-btn cancel" data-i18n="cancel-btn">❌ キャンセル</button>
+                    <button id="background-btn" class="control-btn" data-i18n="background-btn">🔙 バックグラウンド</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating progress (when minimized) -->
+        <div class="floating-progress" id="floating-progress" style="display: none;">
+            <div class="floating-content">
+                <div class="floating-info">
+                    <span class="floating-text" data-i18n="generating-text">生成中...</span>
+                    <span class="floating-percent" id="floating-percent">0%</span>
+                </div>
+                <div class="floating-bar">
+                    <div class="floating-fill" id="floating-fill"></div>
+                </div>
+                <button id="restore-progress" class="restore-btn" data-i18n="restore-progress" title="詳細を表示">📈</button>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="notification" id="notification" style="display: none;">
+            <div class="notification-content">
+                <span class="notification-icon" id="notification-icon">ℹ️</span>
+                <span class="notification-text" id="notification-text"></span>
+                <button class="notification-close" id="notification-close">×</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
