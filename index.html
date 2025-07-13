@@ -210,6 +210,27 @@
             </div>
         </div>
 
+        <!-- File loading progress -->
+        <div class="file-loading-progress" id="file-loading-progress" style="display: none;">
+            <div class="file-loading-content">
+                <div class="file-loading-header">
+                    <span class="file-loading-title" data-i18n="file-loading-title">ファイル読み込み中</span>
+                    <button class="file-loading-close" id="file-loading-close">×</button>
+                </div>
+                <div class="file-loading-info">
+                    <span class="file-loading-text" id="file-loading-text">読み込み中...</span>
+                    <span class="file-loading-percent" id="file-loading-percent">0%</span>
+                </div>
+                <div class="file-loading-bar">
+                    <div class="file-loading-fill" id="file-loading-fill"></div>
+                </div>
+                <div class="file-loading-details">
+                    <span id="file-loading-count">0</span>/<span id="file-loading-total">0</span> <span data-i18n="files-processed">ファイル処理済み</span>
+                    <span class="file-loading-speed" id="file-loading-speed"></span>
+                </div>
+            </div>
+        </div>
+
         <!-- Floating progress (when minimized) -->
         <div class="floating-progress" id="floating-progress" style="display: none;">
             <div class="floating-content">

@@ -76,6 +76,7 @@ export class LanguageManager {
                 // Processing Stages
                 'stage-loading-source': 'ソース画像を読み込み中...',
                 'stage-loading-tiles': 'タイル画像を読み込み中...',
+                'stage-converting-tiles': 'タイル画像を変換中...',
                 'stage-analyzing-colors': '色分析中...',
                 'stage-building-index': '検索インデックス構築中...',
                 'stage-generating-mosaic': 'モザイク生成中...',
@@ -143,7 +144,16 @@ export class LanguageManager {
                 'stage-cancelled': 'キャンセル',
                 'progress-stagnant': '進捗が長時間更新されていません',
                 'processing-slow': '処理速度が異常に遅くなっています',
-                'initializing': '初期化中...'
+                'initializing': '初期化中...',
+                
+                // File Loading Progress
+                'file-loading-title': 'ファイル読み込み中',
+                'file-loading-source': 'ソース画像を読み込み中...',
+                'file-loading-tiles': 'タイル画像を読み込み中...',
+                'files-processed': 'ファイル処理済み',
+                'files-per-second': '枚/秒',
+                'loading-complete': '読み込み完了',
+                'loading-cancelled': '読み込みがキャンセルされました'
             },
             
             en: {
@@ -207,6 +217,7 @@ export class LanguageManager {
                 // Processing Stages
                 'stage-loading-source': 'Loading source image...',
                 'stage-loading-tiles': 'Loading tile images...',
+                'stage-converting-tiles': 'Converting tile images...',
                 'stage-analyzing-colors': 'Analyzing colors...',
                 'stage-building-index': 'Building search index...',
                 'stage-generating-mosaic': 'Generating mosaic...',
@@ -274,7 +285,16 @@ export class LanguageManager {
                 'stage-cancelled': 'Cancelled',
                 'progress-stagnant': 'Progress has not been updated for a long time',
                 'processing-slow': 'Processing speed is abnormally slow',
-                'initializing': 'Initializing...'
+                'initializing': 'Initializing...',
+                
+                // File Loading Progress
+                'file-loading-title': 'Loading Files',
+                'file-loading-source': 'Loading source image...',
+                'file-loading-tiles': 'Loading tile images...',
+                'files-processed': 'files processed',
+                'files-per-second': 'files/sec',
+                'loading-complete': 'Loading complete',
+                'loading-cancelled': 'Loading was cancelled'
             }
         };
     }

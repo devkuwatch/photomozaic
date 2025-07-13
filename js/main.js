@@ -126,6 +126,10 @@ class PhotoMosaicApp {
         document.getElementById('notification-close').addEventListener('click', 
             this.hideNotification.bind(this));
         
+        // File loading progress close
+        document.getElementById('file-loading-close').addEventListener('click', 
+            this.hideFileLoadingProgress.bind(this));
+        
         // Keyboard shortcuts
         document.addEventListener('keydown', this.handleKeyDown.bind(this));
     }
@@ -163,11 +167,16 @@ class PhotoMosaicApp {
         if (!file) return;
         
         try {
-            this.showNotification(this.languageManager.translate('loading-source-image'), 'info');
+            // Show progress bar for source image loading
+            this.showFileLoadingProgress('file-loading-title');
+            this.updateFileLoadingProgress(0, 0, 1, '');
             
             // Load image
             const imageData = await this.imageProcessor.loadImage(file);
             this.state.sourceImage = imageData;
+            
+            // Update progress to 100%
+            this.updateFileLoadingProgress(100, 1, 1, this.languageManager.translate('loading-complete'));
             
             // Display preview
             this.displaySourcePreview(imageData);
@@ -175,10 +184,15 @@ class PhotoMosaicApp {
             // Update generate button state
             this.updateGenerateButton();
             
-            this.showNotification(this.languageManager.translate('source-image-loaded'), 'success');
+            // Hide progress bar after short delay
+            setTimeout(() => {
+                this.hideFileLoadingProgress();
+                this.showNotification(this.languageManager.translate('source-image-loaded'), 'success');
+            }, 500);
             
         } catch (error) {
             console.error('Source image loading error:', error);
+            this.hideFileLoadingProgress();
             this.showNotification(this.languageManager.translate('source-image-load-failed'), 'error');
         }
     }
@@ -195,7 +209,9 @@ class PhotoMosaicApp {
         }
         
         try {
-            this.showNotification(`${files.length}${this.languageManager.translate('processing-tile-images')}`, 'info');
+            // Show progress bar for tile images loading
+            this.showFileLoadingProgress('file-loading-title');
+            this.updateFileLoadingProgress(0, 0, files.length, '');
             
             // Set tile processing state to started
             this.state.isTileProcessing = true;
@@ -214,6 +230,7 @@ class PhotoMosaicApp {
             this.state.isTileProcessing = false;
             this.state.tileProcessingComplete = false;
             this.updateGenerateButton();
+            this.hideFileLoadingProgress();
             this.showNotification(this.languageManager.translate('tile-images-load-failed'), 'error');
         }
     }
@@ -221,6 +238,7 @@ class PhotoMosaicApp {
     async processTileFilesBackground(files) {
         try {
             const startTime = Date.now();
+            this.tileLoadingStartTime = startTime; // Record start time for speed calculation
             let processedCount = 0;
             const previewGrid = document.getElementById('tile-preview-grid');
             previewGrid.innerHTML = '';
@@ -282,7 +300,13 @@ class PhotoMosaicApp {
             const avgTimePerImage = totalTime / processedCount;
             
             console.log(`✅ Parallel processing completed: ${processedCount} files, total time: ${totalTime}ms, average: ${avgTimePerImage.toFixed(1)}ms/file`);
-            this.showNotification(`${processedCount}${this.languageManager.translate('tiles-processed-time')} (${(totalTime/1000).toFixed(1)}s)`, 'success');
+            
+            // Update progress to 100% and hide progress bar
+            this.updateFileLoadingProgress(100, processedCount, files.length, this.languageManager.translate('loading-complete'));
+            setTimeout(() => {
+                this.hideFileLoadingProgress();
+                this.showNotification(`${processedCount}${this.languageManager.translate('tiles-processed-time')} (${(totalTime/1000).toFixed(1)}s)`, 'success');
+            }, 500);
         
             // Set tile processing completion flag
             this.state.isTileProcessing = false;
@@ -293,6 +317,9 @@ class PhotoMosaicApp {
             
         } catch (error) {
             console.error('❌ Error occurred during tile processing:', error);
+            
+            // Hide progress bar on error
+            this.hideFileLoadingProgress();
             
             // Reset flags on error
             this.state.isTileProcessing = false;
@@ -356,10 +383,9 @@ class PhotoMosaicApp {
     
     // Update tile loading progress
     updateTileLoadingProgress(percent, processed, total) {
-        // Update notification message
-        if (percent < 100) {
-            this.showNotification(`${this.languageManager.translate('parallel-processing-progress')} ${percent}% (${processed}/${total})`, 'info');
-        }
+        // Update file loading progress bar
+        const speed = `${(processed / ((Date.now() - this.tileLoadingStartTime || Date.now()) / 1000)).toFixed(1)} ${this.languageManager.translate('files-per-second')}`;
+        this.updateFileLoadingProgress(percent, processed, total, speed);
         
         // Output detailed progress information to console
         if (processed % 50 === 0 || percent === 100) {
@@ -502,21 +528,37 @@ class PhotoMosaicApp {
             
             // Request processing from worker
             // Get ImageData of source image
+            this.updateProgressDisplay({
+                progress: 5,
+                stage: this.languageManager.translate('stage-loading-source'),
+                info: 'Processing source image...',
+                elapsedTime: 0,
+                remainingTime: 0
+            });
+            
             const sourceCanvas = this.state.sourceImage.canvas;
             const sourceCtx = sourceCanvas.getContext('2d');
             const sourceImageData = sourceCtx.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
             
-            // Prepare ImageData for tile images
-            const tileImageDataArray = await Promise.all(
-                this.state.tileFiles.map(async (file) => {
-                    const imageData = await this.processFileToImageData(file);
-                    return {
-                        name: file.name,
-                        size: file.size,
-                        imageData: imageData
-                    };
-                })
-            );
+            // Prepare ImageData for tile images with progress
+            this.updateProgressDisplay({
+                progress: 10,
+                stage: this.languageManager.translate('stage-converting-tiles'),
+                info: 'Converting tile images to ImageData...',
+                elapsedTime: 0,
+                remainingTime: 0
+            });
+            
+            const tileImageDataArray = await this.processFilesToImageDataWithProgress(this.state.tileFiles);
+            
+            // Update progress before sending to worker
+            this.updateProgressDisplay({
+                progress: 45,
+                stage: this.languageManager.translate('stage-analyzing-colors'),
+                info: 'Starting mosaic generation...',
+                elapsedTime: 0,
+                remainingTime: 0
+            });
             
             const message = {
                 type: 'generate_mosaic',
@@ -1719,6 +1761,116 @@ class PhotoMosaicApp {
         if (currentStageElement) {
             currentStageElement.textContent = this.languageManager.translate(stageKey);
         }
+    }
+    
+    // File loading progress bar methods
+    showFileLoadingProgress(title = 'file-loading-title') {
+        const overlay = document.getElementById('file-loading-progress');
+        const titleElement = document.getElementById('file-loading-title');
+        
+        if (overlay && titleElement) {
+            titleElement.textContent = this.languageManager.translate(title);
+            overlay.style.display = 'flex';
+            this.updateFileLoadingProgress(0, 0, 0, '');
+        }
+    }
+    
+    hideFileLoadingProgress() {
+        const overlay = document.getElementById('file-loading-progress');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+    }
+    
+    updateFileLoadingProgress(percent, processed, total, speed = '') {
+        const percentElement = document.getElementById('file-loading-percent');
+        const fillElement = document.getElementById('file-loading-fill');
+        const countElement = document.getElementById('file-loading-count');
+        const totalElement = document.getElementById('file-loading-total');
+        const speedElement = document.getElementById('file-loading-speed');
+        const textElement = document.getElementById('file-loading-text');
+        
+        if (percentElement) percentElement.textContent = `${percent}%`;
+        if (fillElement) fillElement.style.width = `${percent}%`;
+        if (countElement) countElement.textContent = processed;
+        if (totalElement) totalElement.textContent = total;
+        if (speedElement) speedElement.textContent = speed;
+        
+        if (textElement) {
+            if (total === 1) {
+                textElement.textContent = this.languageManager.translate('file-loading-source');
+            } else if (total > 1) {
+                textElement.textContent = this.languageManager.translate('file-loading-tiles');
+            } else {
+                textElement.textContent = this.languageManager.translate('file-loading-title');
+            }
+        }
+    }
+    
+    // Process files to ImageData with progress display
+    async processFilesToImageDataWithProgress(files) {
+        const tileImageDataArray = [];
+        const totalFiles = files.length;
+        const startTime = Date.now();
+        
+        // Process in batches for better performance
+        const batchSize = Math.min(10, Math.max(1, Math.floor(totalFiles / 20))); // Adaptive batch size
+        
+        for (let i = 0; i < totalFiles; i += batchSize) {
+            const batch = files.slice(i, Math.min(i + batchSize, totalFiles));
+            const batchPromises = batch.map(async (file) => {
+                try {
+                    const imageData = await this.processFileToImageData(file);
+                    return {
+                        name: file.name,
+                        size: file.size,
+                        imageData: imageData
+                    };
+                } catch (error) {
+                    console.error(`Error processing file ${file.name}:`, error);
+                    return null;
+                }
+            });
+            
+            const batchResults = await Promise.all(batchPromises);
+            
+            // Add successful results
+            batchResults.forEach(result => {
+                if (result) {
+                    tileImageDataArray.push(result);
+                }
+            });
+            
+            // Update progress
+            const processedCount = Math.min(i + batchSize, totalFiles);
+            const progress = 10 + Math.round((processedCount / totalFiles) * 30); // 10% to 40%
+            const elapsedTime = Date.now() - startTime;
+            const avgTimePerFile = processedCount > 0 ? elapsedTime / processedCount : 0;
+            const remainingFiles = totalFiles - processedCount;
+            const estimatedRemainingTime = avgTimePerFile * remainingFiles;
+            
+            this.updateProgressDisplay({
+                progress: progress,
+                stage: this.languageManager.translate('stage-converting-tiles'),
+                info: `Converting tiles ${processedCount}/${totalFiles} (batch processing)`,
+                elapsedTime: elapsedTime,
+                remainingTime: estimatedRemainingTime
+            });
+            
+            // Small delay to allow UI update
+            await new Promise(resolve => setTimeout(resolve, 1));
+        }
+        
+        // Final progress update for this stage
+        this.updateProgressDisplay({
+            progress: 40,
+            stage: this.languageManager.translate('stage-converting-tiles'),
+            info: `Converted ${totalFiles} tile images to ImageData`,
+            elapsedTime: Date.now() - startTime,
+            remainingTime: 0
+        });
+        
+        return tileImageDataArray;
     }
     
     // Cleanup
